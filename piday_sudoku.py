@@ -1,4 +1,6 @@
-from __future__ import division
+# special pi-day sudoku solver
+# http://brainfreezepuzzles.com/piday2008.html
+
 import numpy as np
 import re
 from copy import deepcopy
@@ -31,31 +33,50 @@ piday_blobs =  ['000111111222',
                 'aaa667788bbb',
                 'aaa667788bbb',
                 'aaaaaabbbbbb']
-                
-                
 
-def repeated_value( x ):
-    count = np.zeros((GRIDSIZE+1,1),dtype=int)
+piday_digits = [3,1,4,1,5,9,2,6,5,3,5,8]
+
+def parse_grid( piday_grid ):
+    grid = -np.ones((GRIDSIZE,GRIDSIZE),dtype = int)
+    for i in range(GRIDSIZE):
+        for j in range(GRIDSIZE):
+            grid[i][j] = int(piday_grid[i][j]) if piday_grid[i][j] != 'x' else -1
+    return grid
+    
+def parse_blobs( piday_blobs ):
+    pb = np.array([list(r) for r in piday_blobs])
+    uniq_id = list(set(pb.flatten()))
+    blob_map = -np.ones(pb.shape,dtype=int)
+    for i in range(len(uniq_id)):
+        blob_map[pb == uniq_id[i]] = i
+    return blob_map
+
+def parse_digits( piday_digits ):
+    digit_limit = np.zeros((10,1),dtype=int)
+    for idx in piday_digits:
+        digit_limit[idx] += 1
+    return digit_limit
+
+def too_many_repeats( x, digit_limit ):
+    count = np.zeros((10,1),dtype=int)
     for idx in x:
-        count[idx] += 1
-    return any(count[1:]>1)
+        if idx >= 0:
+            count[idx] += 1
+    return any(count > digit_limit)
 
-def valid_grid( grid, i, j ):
-    slice_i = slice((i//BOXSIZE)*BOXSIZE,(1+i//BOXSIZE)*BOXSIZE)
-    slice_j = slice((j//BOXSIZE)*BOXSIZE,(1+j//BOXSIZE)*BOXSIZE)
-    if repeated_value(grid[slice_i, slice_j].flatten('F')):
+def valid_grid( grid, blob_map, digit_limit, i, j ):
+    if too_many_repeats(grid[blob_map==blob_map[i][j]], digit_limit):
         return False
-    if repeated_value(grid[i,:]):
+    if too_many_repeats(grid[i,:], digit_limit):
         return False
-    if repeated_value(grid[:,j]):
+    if too_many_repeats(grid[:,j], digit_limit):
         return False
     return True
 
 sudoku_solution = []
 
-def find_solution( grid, i = 0, j = 0 ):
-    #print grid
-    while grid[i][j] > 0:
+def find_solution( grid, blob_map, digit_limit, i = 0, j = 0 ):
+    while grid[i][j] >= 0:
         i += 1
         if i == GRIDSIZE:
             j += 1
@@ -65,13 +86,18 @@ def find_solution( grid, i = 0, j = 0 ):
                 return True
             i = 0
     flag = False
-    for value in range(1,GRIDSIZE+1):
+    for value in set(piday_digits):
         grid[i][j] = value
-        if valid_grid( grid, i, j ):
-            flag = find_solution( grid, i, j )
+        if valid_grid( grid, blob_map, digit_limit, i, j ):
+            flag = find_solution( grid, blob_map, digit_limit, i, j )
             if flag: break
-    grid[i][j] = 0
+    grid[i][j] = -1
     return flag
     
-            
+grid = parse_grid(piday_grid ) 
+blob_map = parse_blobs(piday_blobs )
+digit_limit = parse_digits( piday_digits )
+
+find_solution(grid, blob_map, digit_limit)
+
 
